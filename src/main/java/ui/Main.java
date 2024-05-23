@@ -12,9 +12,10 @@ public class Main {
 
             if (clientId != null) {
                 WhiteboardClient client = new WhiteboardClient(clientId);
+                WhiteboardFrame frame = new WhiteboardFrame(client);
+                client.setFrame(frame);
                 client.connect();
 
-                WhiteboardFrame frame = new WhiteboardFrame(client);
                 frame.setVisible(true);
             } else {
                 System.exit(0);

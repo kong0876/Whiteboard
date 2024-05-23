@@ -22,6 +22,7 @@ public class Server {
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
                 clients.add(clientHandler);
                 new Thread(clientHandler).start();
+                sendClientList();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -33,11 +34,25 @@ public class Server {
             client.sendMessage(message);
         }
     }
+
+    public static void sendClientList() {
+        StringBuilder clientList = new StringBuilder("CLIENTS:");
+        for (ClientHandler client : clients) {
+            clientList.append(client.getClientId()).append(",");
+        }
+        broadcast(clientList.toString());
+    }
+
+    public static void removeClient(ClientHandler clientHandler) {
+        clients.remove(clientHandler);
+        sendClientList();
+    }
 }
 
 class ClientHandler implements Runnable {
     private Socket socket;
     private PrintWriter out;
+    private BufferedReader in;
     private String clientId;
 
     public ClientHandler(Socket socket) {
@@ -48,19 +63,38 @@ class ClientHandler implements Runnable {
     public void run() {
         try {
             out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            String message = in.readLine();
-            if (message.startsWith("ID:")) {
-                clientId = message.substring(3);
-                System.out.println("클라이언트 ID: " + clientId);
-                Server.broadcast(clientId + "님이 접속했습니다.");
-            }
-            out.println("서버에 접속되었습니다. 환영합니다!");
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            // 클라이언트로부터 메시지를 읽고 처리하는 코드 추가 가능
+            String message;
+            while ((message = in.readLine()) != null) {
+                if (message.startsWith("ID:")) {
+                    clientId = message.substring(3);
+                    System.out.println("클라이언트 ID: " + clientId);
+                    Server.broadcast("JOIN:" + clientId);
+                    Server.sendClientList();
+                } else if (message.startsWith("DISCONNECT:")) {
+                    String disconnectingClientId = message.substring(11);
+                    System.out.println("클라이언트 ID: " + disconnectingClientId + "님이 접속 해제했습니다.");
+                    Server.broadcast("LEAVE:" + disconnectingClientId);
+                    Server.removeClient(this);
+                    break;
+                } else {
+                    // 다른 메시지 처리
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+    }
+
+    public String getClientId() {
+        return clientId;
     }
 
     public void sendMessage(String message) {
