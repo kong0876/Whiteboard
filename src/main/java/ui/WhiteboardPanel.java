@@ -6,6 +6,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import client.WhiteboardClient;
 
 public class WhiteboardPanel extends JPanel {
     private List<Shape> shapes;
@@ -17,8 +18,10 @@ public class WhiteboardPanel extends JPanel {
     private boolean fillShape;
     private Shape selectedShape;
     private Point prevMousePoint;
+    private WhiteboardClient client;
 
-    public WhiteboardPanel() {
+    public WhiteboardPanel(WhiteboardClient client) {
+        this.client = client;
         setBackground(Color.WHITE);
         shapes = new ArrayList<>();
         currentStrokeColor = Color.BLACK;
