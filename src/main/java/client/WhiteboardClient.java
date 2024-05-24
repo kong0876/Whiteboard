@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import ui.WhiteboardFrame;
+import ui.Shape;
 
 public class WhiteboardClient {
     private Socket socket;
@@ -74,8 +75,16 @@ public class WhiteboardClient {
             if (frame != null) {
                 frame.removeClient(leavingClient);
             }
+        } else if (message.startsWith("SHAPE:")) {
+            String shapeData = message.substring(6);
+            System.out.println("도형 정보 수신: " + shapeData); // 추가된 로그
+            Shape shape = Shape.deserialize(shapeData);
+            if (frame != null) {
+                frame.getWhiteboardPanel().updateShape(shape);
+            }
         }
     }
+
 
     public void sendMessage(String message) {
         if (out != null) {

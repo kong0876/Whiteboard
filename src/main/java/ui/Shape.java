@@ -168,4 +168,31 @@ public class Shape {
     public void setText(String text) {
         this.text = text;
     }
+
+    public String serialize() {
+        return shapeType + "," + x + "," + y + "," + width + "," + height + "," + strokeColor.getRGB() + "," +
+                fillColor.getRGB() + "," + stroke + "," + fill + (shapeType == ShapeType.TEXT ? "," + text : "");
+    }
+
+    public static Shape deserialize(String data) {
+        String[] parts = data.split(",");
+        ShapeType type = ShapeType.valueOf(parts[0]);
+        int x = Integer.parseInt(parts[1]);
+        int y = Integer.parseInt(parts[2]);
+        int width = Integer.parseInt(parts[3]);
+        int height = Integer.parseInt(parts[4]);
+        Color strokeColor = new Color(Integer.parseInt(parts[5]));
+        Color fillColor = new Color(Integer.parseInt(parts[6]));
+        int stroke = Integer.parseInt(parts[7]);
+        boolean fill = Boolean.parseBoolean(parts[8]);
+
+        Shape shape = new Shape(x, y, strokeColor, fillColor, stroke, fill, type);
+        shape.width = width;
+        shape.height = height;
+        if (type == ShapeType.TEXT) {
+            shape.setText(parts[9]);
+        }
+        return shape;
+    }
 }
+

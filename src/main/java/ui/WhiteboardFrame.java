@@ -33,6 +33,10 @@ public class WhiteboardFrame extends JFrame {
         add(scrollPane, BorderLayout.EAST);
     }
 
+    public WhiteboardPanel getWhiteboardPanel() {
+        return whiteboardPanel;
+    }
+
     public void updateClientList(String[] clients) {
         clientListModel.clear();
         for (String client : clients) {

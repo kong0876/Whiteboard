@@ -28,6 +28,7 @@ public class WhiteboardPanel extends JPanel {
         currentFillColor = Color.BLACK;
         currentStroke = 1;
         fillShape = false;
+        currentAction = "선택"; // 초기 값 설정
 
         addMouseListener(new MouseAdapter() {
             @Override
@@ -43,7 +44,11 @@ public class WhiteboardPanel extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                currentShape = null;
+                if (currentShape != null) {
+                    // 도형의 최종 상태를 서버로 전송
+                    client.sendMessage("SHAPE:" + currentShape.serialize());
+                    currentShape = null;
+                }
             }
         });
 
@@ -56,45 +61,56 @@ public class WhiteboardPanel extends JPanel {
                     int dy = currentPoint.y - prevMousePoint.y;
                     selectedShape.move(dx, dy);
                     prevMousePoint = currentPoint;
-                    repaint();
                 } else if (currentShape != null) {
                     currentShape.update(e.getX(), e.getY());
-                    repaint();
                 }
+                repaint();
             }
         });
     }
 
     private void createShape(int x, int y) {
         switch (currentAction) {
-            case "원" -> currentShape = new Shape(x, y, currentStrokeColor, currentFillColor, currentStroke, fillShape, Shape.ShapeType.CIRCLE);
-            case "사각형" -> currentShape = new Shape(x, y, currentStrokeColor, currentFillColor, currentStroke, fillShape, Shape.ShapeType.RECTANGLE);
-            case "선" -> currentShape = new Shape(x, y, currentStrokeColor, currentFillColor, currentStroke, false, Shape.ShapeType.LINE);
-            case "텍스트" -> {
+            case "원":
+                currentShape = new Shape(x, y, currentStrokeColor, currentFillColor, currentStroke, fillShape, Shape.ShapeType.CIRCLE);
+                break;
+            case "사각형":
+                currentShape = new Shape(x, y, currentStrokeColor, currentFillColor, currentStroke, fillShape, Shape.ShapeType.RECTANGLE);
+                break;
+            case "선":
+                currentShape = new Shape(x, y, currentStrokeColor, currentFillColor, currentStroke, false, Shape.ShapeType.LINE);
+                break;
+            case "텍스트":
                 String text = JOptionPane.showInputDialog("텍스트 입력:");
                 if (text != null && !text.isEmpty()) {
                     currentShape = new Shape(x, y, currentStrokeColor, currentFillColor, currentStroke, false, Shape.ShapeType.TEXT);
                     currentShape.setText(text);
                 }
-            }
+                break;
+            default:
+                return; // currentAction이 유효하지 않을 경우 메서드 종료
         }
         if (currentShape != null) {
-            shapes.add(currentShape);
+            synchronized (shapes) {
+                shapes.add(currentShape);
+            }
             selectedShape = currentShape;
         }
     }
 
     private void selectShape(int x, int y) {
         selectedShape = null;
-        for (Shape shape : shapes) {
-            if (shape.contains(x, y)) {
-                selectedShape = shape;
-                currentShape = shape;
-                currentStrokeColor = shape.getStrokeColor();
-                currentFillColor = shape.getFillColor();
-                currentStroke = shape.getStroke();
-                fillShape = shape.isFilled();
-                break;
+        synchronized (shapes) {
+            for (Shape shape : shapes) {
+                if (shape.contains(x, y)) {
+                    selectedShape = shape;
+                    currentShape = shape;
+                    currentStrokeColor = shape.getStrokeColor();
+                    currentFillColor = shape.getFillColor();
+                    currentStroke = shape.getStroke();
+                    fillShape = shape.isFilled();
+                    break;
+                }
             }
         }
     }
@@ -139,11 +155,20 @@ public class WhiteboardPanel extends JPanel {
         }
     }
 
+    public void updateShape(Shape shape) {
+        synchronized (shapes) {
+            shapes.add(shape);
+        }
+        repaint();
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        for (Shape shape : shapes) {
-            shape.draw(g);
+        synchronized (shapes) {
+            for (Shape shape : shapes) {
+                shape.draw(g);
+            }
         }
         if (selectedShape != null) {
             selectedShape.drawSelection(g);
