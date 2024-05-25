@@ -77,14 +77,13 @@ public class WhiteboardClient {
             }
         } else if (message.startsWith("SHAPE:")) {
             String shapeData = message.substring(6);
-            System.out.println("도형 정보 수신: " + shapeData); // 추가된 로그
+            System.out.println("도형 정보 수신: " + shapeData);
             Shape shape = Shape.deserialize(shapeData);
             if (frame != null) {
                 frame.getWhiteboardPanel().updateShape(shape);
             }
         }
     }
-
 
     public void sendMessage(String message) {
         if (out != null) {

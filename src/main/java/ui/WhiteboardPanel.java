@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import client.WhiteboardClient;
@@ -172,6 +173,34 @@ public class WhiteboardPanel extends JPanel {
         }
         if (selectedShape != null) {
             selectedShape.drawSelection(g);
+        }
+    }
+
+    // 그림 객체 저장
+    public void saveShapes(String filename) {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filename))) {
+            synchronized (shapes) {
+                out.writeObject(shapes);
+            }
+            System.out.println("그림이 저장되었습니다: " + filename);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 그림 객체 로드
+    public void loadShapes(String filename) {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename))) {
+            List<Shape> loadedShapes = (List<Shape>) in.readObject();
+            synchronized (shapes) {
+                shapes.clear();
+                shapes.addAll(loadedShapes);
+            }
+            selectedShape = null; // 선택된 도형을 초기화하여 빨간 원이 보이지 않게 함
+            repaint();
+            System.out.println("그림이 로드되었습니다: " + filename);
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
         }
     }
 }

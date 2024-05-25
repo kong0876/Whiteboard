@@ -29,6 +29,7 @@ public class ClientHandler implements Runnable {
                     System.out.println("클라이언트 ID: " + clientId);
                     Server.broadcast("JOIN:" + clientId);
                     Server.sendClientList();
+                    Server.sendCurrentState(this); // 새로운 클라이언트에 현재 상태 전송
                 } else if (message.startsWith("DISCONNECT:")) {
                     String disconnectingClientId = message.substring(11);
                     System.out.println("클라이언트 ID: " + disconnectingClientId + "님이 접속 해제했습니다.");
@@ -36,8 +37,8 @@ public class ClientHandler implements Runnable {
                     Server.removeClient(this);
                     break;
                 } else if (message.startsWith("SHAPE:")) {
-                    System.out.println("도형 정보 수신: " + message); // 추가된 로그
-                    Server.broadcast(message);
+                    System.out.println("도형 정보 수신: " + message);
+                    Server.addShape(message.substring(6)); // 도형 정보를 리스트에 추가하고 브로드캐스트
                 } else {
                     // 다른 메시지 처리
                 }
@@ -52,7 +53,6 @@ public class ClientHandler implements Runnable {
             }
         }
     }
-
 
     public String getClientId() {
         return clientId;

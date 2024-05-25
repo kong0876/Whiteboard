@@ -1,9 +1,12 @@
 package ui;
 
 import java.awt.*;
+import java.io.Serializable;
 
-public class Shape {
+public class Shape implements Serializable {
     public enum ShapeType {CIRCLE, RECTANGLE, LINE, TEXT}
+
+    private static final long serialVersionUID = 1L;
 
     private int x, y, width, height;
     private Color strokeColor;
@@ -12,7 +15,7 @@ public class Shape {
     private boolean fill;
     private ShapeType shapeType;
     private String text;
-    private FontMetrics fontMetrics;
+    private transient FontMetrics fontMetrics;
 
     public Shape(int x, int y, Color strokeColor, Color fillColor, int stroke, boolean fill, ShapeType shapeType) {
         this.x = x;
@@ -195,4 +198,3 @@ public class Shape {
         return shape;
     }
 }
-
