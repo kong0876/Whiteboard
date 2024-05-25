@@ -5,15 +5,22 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.List;
+import java.util.concurrent.ConcurrentMap;
+import ui.Shape;
 
 public class ClientHandler implements Runnable {
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
     private String clientId;
+    private ConcurrentMap<String, String> shapeLocks;
+    private List<Shape> shapes;
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket, ConcurrentMap<String, String> shapeLocks, List<Shape> shapes) {
         this.socket = socket;
+        this.shapeLocks = shapeLocks;
+        this.shapes = shapes;
     }
 
     @Override
@@ -29,7 +36,7 @@ public class ClientHandler implements Runnable {
                     System.out.println("클라이언트 ID: " + clientId);
                     Server.broadcast("JOIN:" + clientId);
                     Server.sendClientList();
-                    Server.sendCurrentState(this); // 새로운 클라이언트에 현재 상태 전송
+                    sendExistingShapesAndLocks(); // 새 클라이언트에게 기존 도형 정보와 잠금 상태를 전송
                 } else if (message.startsWith("DISCONNECT:")) {
                     String disconnectingClientId = message.substring(11);
                     System.out.println("클라이언트 ID: " + disconnectingClientId + "님이 접속 해제했습니다.");
@@ -37,10 +44,29 @@ public class ClientHandler implements Runnable {
                     Server.removeClient(this);
                     break;
                 } else if (message.startsWith("SHAPE:")) {
-                    System.out.println("도형 정보 수신: " + message);
-                    Server.addShape(message.substring(6)); // 도형 정보를 리스트에 추가하고 브로드캐스트
-                } else {
-                    // 다른 메시지 처리
+                    Shape shape = Shape.deserialize(message.substring(6));
+                    Server.updateShape(shape); // 서버에 도형 정보 업데이트
+                    Server.broadcast(message);
+                } else if (message.startsWith("LOCK:")) {
+                    String[] parts = message.substring(5).split(":");
+                    if (parts.length == 2) { // 메시지 형식이 올바른지 확인
+                        String shapeId = parts[0];
+                        String ownerId = parts[1];
+                        shapeLocks.put(shapeId, ownerId);
+                        Server.broadcast(message);
+                    } else {
+                        System.out.println("잘못된 LOCK 메시지 형식: " + message);
+                    }
+                } else if (message.startsWith("UNLOCK:")) {
+                    String[] parts = message.substring(7).split(":");
+                    if (parts.length == 2) { // 메시지 형식이 올바른지 확인
+                        String shapeId = parts[0];
+                        String ownerId = parts[1];
+                        shapeLocks.remove(shapeId, ownerId);
+                        Server.broadcast(message);
+                    } else {
+                        System.out.println("잘못된 UNLOCK 메시지 형식: " + message);
+                    }
                 }
             }
         } catch (IOException e) {
@@ -50,6 +76,19 @@ public class ClientHandler implements Runnable {
                 socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void sendExistingShapesAndLocks() {
+        synchronized (shapes) {
+            for (Shape shape : shapes) {
+                sendMessage("SHAPE:" + shape.serialize());
+            }
+        }
+        synchronized (shapeLocks) {
+            for (String shapeId : shapeLocks.keySet()) {
+                sendMessage("LOCK:" + shapeId + ":" + shapeLocks.get(shapeId));
             }
         }
     }

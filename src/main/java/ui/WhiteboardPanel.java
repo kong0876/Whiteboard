@@ -7,10 +7,12 @@ import java.awt.event.MouseEvent;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import client.WhiteboardClient;
 
 public class WhiteboardPanel extends JPanel {
-    private List<Shape> shapes;
+    private final List<Shape> shapes;
     private Shape currentShape;
     private String currentAction;
     private Color currentStrokeColor;
@@ -19,12 +21,14 @@ public class WhiteboardPanel extends JPanel {
     private boolean fillShape;
     private Shape selectedShape;
     private Point prevMousePoint;
-    private WhiteboardClient client;
+    private final WhiteboardClient client;
+    private final Map<String, String> shapeLocks; // 도형 ID와 클라이언트 ID를 매핑하여 도형 락 상태를 저장
 
     public WhiteboardPanel(WhiteboardClient client) {
         this.client = client;
         setBackground(Color.WHITE);
         shapes = new ArrayList<>();
+        shapeLocks = new HashMap<>();
         currentStrokeColor = Color.BLACK;
         currentFillColor = Color.BLACK;
         currentStroke = 1;
@@ -49,6 +53,8 @@ public class WhiteboardPanel extends JPanel {
                     // 도형의 최종 상태를 서버로 전송
                     client.sendMessage("SHAPE:" + currentShape.serialize());
                     currentShape = null;
+                } else if (selectedShape != null) {
+                    client.sendMessage("SHAPE:" + selectedShape.serialize());
                 }
             }
         });
@@ -62,10 +68,13 @@ public class WhiteboardPanel extends JPanel {
                     int dy = currentPoint.y - prevMousePoint.y;
                     selectedShape.move(dx, dy);
                     prevMousePoint = currentPoint;
+                    client.sendMessage("SHAPE:" + selectedShape.serialize()); // 실시간으로 변경 사항 전송
+                    repaint();
                 } else if (currentShape != null) {
                     currentShape.update(e.getX(), e.getY());
+                    client.sendMessage("SHAPE:" + currentShape.serialize()); // 실시간으로 변경 사항 전송
+                    repaint();
                 }
-                repaint();
             }
         });
     }
@@ -95,24 +104,43 @@ public class WhiteboardPanel extends JPanel {
             synchronized (shapes) {
                 shapes.add(currentShape);
             }
+            if (selectedShape != null) {
+                client.sendMessage("UNLOCK:" + selectedShape.getId() + ":" + client.getClientId());
+            }
             selectedShape = currentShape;
+            client.sendMessage("LOCK:" + currentShape.getId() + ":" + client.getClientId()); // 새 도형을 생성하면 자동으로 잠금
         }
     }
 
     private void selectShape(int x, int y) {
-        selectedShape = null;
+        Shape shapeToSelect = null;
         synchronized (shapes) {
             for (Shape shape : shapes) {
                 if (shape.contains(x, y)) {
-                    selectedShape = shape;
-                    currentShape = shape;
-                    currentStrokeColor = shape.getStrokeColor();
-                    currentFillColor = shape.getFillColor();
-                    currentStroke = shape.getStroke();
-                    fillShape = shape.isFilled();
+                    shapeToSelect = shape;
                     break;
                 }
             }
+        }
+
+        if (shapeToSelect != null) {
+            if (shapeLocks.containsKey(shapeToSelect.getId())) {
+                if (!shapeLocks.get(shapeToSelect.getId()).equals(client.getClientId())) {
+                    JOptionPane.showMessageDialog(this, "도형을 수정할 수 없습니다.");
+                    return;
+                }
+            } else {
+                if (selectedShape != null) {
+                    client.sendMessage("UNLOCK:" + selectedShape.getId() + ":" + client.getClientId());
+                }
+                client.sendMessage("LOCK:" + shapeToSelect.getId() + ":" + client.getClientId());
+            }
+            selectedShape = shapeToSelect;
+            currentShape = shapeToSelect;
+            currentStrokeColor = shapeToSelect.getStrokeColor();
+            currentFillColor = shapeToSelect.getFillColor();
+            currentStroke = shapeToSelect.getStroke();
+            fillShape = shapeToSelect.isFilled();
         }
     }
 
@@ -128,6 +156,7 @@ public class WhiteboardPanel extends JPanel {
         this.currentStrokeColor = color;
         if (selectedShape != null) {
             selectedShape.setStrokeColor(color);
+            client.sendMessage("SHAPE:" + selectedShape.serialize());
             repaint();
         }
     }
@@ -136,6 +165,7 @@ public class WhiteboardPanel extends JPanel {
         this.currentFillColor = color;
         if (selectedShape != null) {
             selectedShape.setFillColor(color);
+            client.sendMessage("SHAPE:" + selectedShape.serialize());
             repaint();
         }
     }
@@ -144,6 +174,7 @@ public class WhiteboardPanel extends JPanel {
         this.currentStroke = stroke;
         if (selectedShape != null) {
             selectedShape.setStroke(stroke);
+            client.sendMessage("SHAPE:" + selectedShape.serialize());
             repaint();
         }
     }
@@ -152,15 +183,37 @@ public class WhiteboardPanel extends JPanel {
         this.fillShape = fill;
         if (selectedShape != null) {
             selectedShape.setFilled(fill);
+            client.sendMessage("SHAPE:" + selectedShape.serialize());
             repaint();
         }
     }
 
     public void updateShape(Shape shape) {
         synchronized (shapes) {
+            shapes.removeIf(s -> s.getId().equals(shape.getId()));
             shapes.add(shape);
         }
         repaint();
+    }
+
+    public void lockShape(String shapeId, String ownerId) {
+        synchronized (shapeLocks) {
+            shapeLocks.put(shapeId, ownerId);
+        }
+        repaint();
+    }
+
+    public void unlockShape(String shapeId, String ownerId) {
+        synchronized (shapeLocks) {
+            if (shapeLocks.get(shapeId).equals(ownerId)) {
+                shapeLocks.remove(shapeId);
+            }
+        }
+        repaint();
+    }
+
+    public void lockFailed(String shapeId) {
+        JOptionPane.showMessageDialog(this, "도형을 잠그는 데 실패했습니다: " + shapeId);
     }
 
     @Override
@@ -172,7 +225,20 @@ public class WhiteboardPanel extends JPanel {
             }
         }
         if (selectedShape != null) {
-            selectedShape.drawSelection(g);
+            selectedShape.drawSelection(g, Color.BLUE);
+        }
+        synchronized (shapeLocks) {
+            for (Map.Entry<String, String> entry : shapeLocks.entrySet()) {
+                String shapeId = entry.getKey();
+                String ownerId = entry.getValue();
+                synchronized (shapes) {
+                    for (Shape shape : shapes) {
+                        if (shape.getId().equals(shapeId) && shape != selectedShape) {
+                            shape.drawSelection(g, ownerId.equals(client.getClientId()) ? Color.BLUE : Color.RED);
+                        }
+                    }
+                }
+            }
         }
     }
 

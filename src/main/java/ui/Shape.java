@@ -2,12 +2,13 @@ package ui;
 
 import java.awt.*;
 import java.io.Serializable;
+import java.util.UUID;
 
 public class Shape implements Serializable {
     public enum ShapeType {CIRCLE, RECTANGLE, LINE, TEXT}
 
     private static final long serialVersionUID = 1L;
-
+    private String id; // 고유 식별자
     private int x, y, width, height;
     private Color strokeColor;
     private Color fillColor;
@@ -18,6 +19,7 @@ public class Shape implements Serializable {
     private transient FontMetrics fontMetrics;
 
     public Shape(int x, int y, Color strokeColor, Color fillColor, int stroke, boolean fill, ShapeType shapeType) {
+        this.id = UUID.randomUUID().toString(); // 고유 식별자 생성
         this.x = x;
         this.y = y;
         this.strokeColor = strokeColor;
@@ -63,10 +65,10 @@ public class Shape implements Serializable {
         }
     }
 
-    public void drawSelection(Graphics g) {
+    public void drawSelection(Graphics g, Color color) {
         Graphics2D g2 = (Graphics2D) g;
         g2.setStroke(new BasicStroke(1));
-        g2.setColor(Color.RED);
+        g2.setColor(color);
         switch (shapeType) {
             case CIRCLE -> g2.drawOval(x - width / 2 - 3, y - height / 2 - 3, width + 6, height + 6);
             case RECTANGLE -> g2.drawRect(x - 3, y - 3, width + 6, height + 6);
@@ -172,28 +174,34 @@ public class Shape implements Serializable {
         this.text = text;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public String serialize() {
-        return shapeType + "," + x + "," + y + "," + width + "," + height + "," + strokeColor.getRGB() + "," +
+        return id + "," + shapeType + "," + x + "," + y + "," + width + "," + height + "," + strokeColor.getRGB() + "," +
                 fillColor.getRGB() + "," + stroke + "," + fill + (shapeType == ShapeType.TEXT ? "," + text : "");
     }
 
     public static Shape deserialize(String data) {
         String[] parts = data.split(",");
-        ShapeType type = ShapeType.valueOf(parts[0]);
-        int x = Integer.parseInt(parts[1]);
-        int y = Integer.parseInt(parts[2]);
-        int width = Integer.parseInt(parts[3]);
-        int height = Integer.parseInt(parts[4]);
-        Color strokeColor = new Color(Integer.parseInt(parts[5]));
-        Color fillColor = new Color(Integer.parseInt(parts[6]));
-        int stroke = Integer.parseInt(parts[7]);
-        boolean fill = Boolean.parseBoolean(parts[8]);
+        String id = parts[0];
+        ShapeType type = ShapeType.valueOf(parts[1]);
+        int x = Integer.parseInt(parts[2]);
+        int y = Integer.parseInt(parts[3]);
+        int width = Integer.parseInt(parts[4]);
+        int height = Integer.parseInt(parts[5]);
+        Color strokeColor = new Color(Integer.parseInt(parts[6]));
+        Color fillColor = new Color(Integer.parseInt(parts[7]));
+        int stroke = Integer.parseInt(parts[8]);
+        boolean fill = Boolean.parseBoolean(parts[9]);
 
         Shape shape = new Shape(x, y, strokeColor, fillColor, stroke, fill, type);
+        shape.id = id;
         shape.width = width;
         shape.height = height;
         if (type == ShapeType.TEXT) {
-            shape.setText(parts[9]);
+            shape.setText(parts[10]);
         }
         return shape;
     }

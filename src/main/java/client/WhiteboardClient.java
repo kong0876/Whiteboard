@@ -76,11 +76,23 @@ public class WhiteboardClient {
                 frame.removeClient(leavingClient);
             }
         } else if (message.startsWith("SHAPE:")) {
-            String shapeData = message.substring(6);
-            System.out.println("도형 정보 수신: " + shapeData);
-            Shape shape = Shape.deserialize(shapeData);
+            Shape shape = Shape.deserialize(message.substring(6));
             if (frame != null) {
                 frame.getWhiteboardPanel().updateShape(shape);
+            }
+        } else if (message.startsWith("LOCK:")) {
+            String[] parts = message.substring(5).split(":");
+            String shapeId = parts[0];
+            String ownerId = parts[1];
+            if (frame != null) {
+                frame.getWhiteboardPanel().lockShape(shapeId, ownerId);
+            }
+        } else if (message.startsWith("UNLOCK:")) {
+            String[] parts = message.substring(7).split(":");
+            String shapeId = parts[0];
+            String ownerId = parts[1];
+            if (frame != null) {
+                frame.getWhiteboardPanel().unlockShape(shapeId, ownerId);
             }
         }
     }
@@ -89,5 +101,9 @@ public class WhiteboardClient {
         if (out != null) {
             out.println(message);
         }
+    }
+
+    public String getClientId() {
+        return clientId;
     }
 }
