@@ -47,6 +47,9 @@ public class ClientHandler implements Runnable {
                     Shape shape = Shape.deserialize(message.substring(6));
                     Server.updateShape(shape); // 서버에 도형 정보 업데이트
                     Server.broadcast(message);
+                } else if (message.startsWith("CLEAR")) {
+                    // 모든 클라이언트에게 CLEAR 명령 전송
+                    Server.broadcast("CLEAR");
                 } else if (message.startsWith("LOCK:")) {
                     String[] parts = message.substring(5).split(":");
                     if (parts.length == 2) { // 메시지 형식이 올바른지 확인

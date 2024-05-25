@@ -6,8 +6,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import client.WhiteboardClient;
 
@@ -258,15 +258,34 @@ public class WhiteboardPanel extends JPanel {
     public void loadShapes(String filename) {
         try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename))) {
             List<Shape> loadedShapes = (List<Shape>) in.readObject();
+            // 기존 도형 제거
             synchronized (shapes) {
                 shapes.clear();
+            }
+            // 서버에 도형 제거 명령 전송
+            client.sendMessage("CLEAR");
+
+            synchronized (shapes) {
                 shapes.addAll(loadedShapes);
             }
             selectedShape = null; // 선택된 도형을 초기화하여 빨간 원이 보이지 않게 함
             repaint();
             System.out.println("그림이 로드되었습니다: " + filename);
+
+            // 로드된 도형 정보를 서버로 전송
+            for (Shape shape : loadedShapes) {
+                client.sendMessage("SHAPE:" + shape.serialize());
+            }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+    }
+
+    // 도형 제거
+    public void clearShapes() {
+        synchronized (shapes) {
+            shapes.clear();
+        }
+        repaint();
     }
 }

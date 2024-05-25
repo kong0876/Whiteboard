@@ -80,6 +80,10 @@ public class WhiteboardClient {
             if (frame != null) {
                 frame.getWhiteboardPanel().updateShape(shape);
             }
+        } else if (message.startsWith("CLEAR")) {
+            if (frame != null) {
+                frame.getWhiteboardPanel().clearShapes();
+            }
         } else if (message.startsWith("LOCK:")) {
             String[] parts = message.substring(5).split(":");
             String shapeId = parts[0];

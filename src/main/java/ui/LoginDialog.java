@@ -11,14 +11,14 @@ public class LoginDialog extends JDialog {
     private String clientId;
 
     public LoginDialog(Frame parent) {
-        super(parent, "Login", true);
+        super(parent, "로그인", true);
         setLayout(new BorderLayout());
 
         idField = new JTextField(15);
-        loginButton = new JButton("Login");
+        loginButton = new JButton("확인");
 
         JPanel panel = new JPanel();
-        panel.add(new JLabel("Client ID:"));
+        panel.add(new JLabel("ID:"));
         panel.add(idField);
         panel.add(loginButton);
 
