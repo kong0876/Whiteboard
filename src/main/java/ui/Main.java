@@ -9,9 +9,10 @@ public class Main {
             LoginDialog loginDialog = new LoginDialog(null);
             loginDialog.setVisible(true);
             String clientId = loginDialog.getClientId();
+            String serverAddress = loginDialog.getServerAddress();
 
-            if (clientId != null) {
-                WhiteboardClient client = new WhiteboardClient(clientId);
+            if (clientId != null && serverAddress != null) {
+                WhiteboardClient client = new WhiteboardClient(clientId, serverAddress);
                 WhiteboardFrame frame = new WhiteboardFrame(client);
                 client.setFrame(frame);
                 client.connect();

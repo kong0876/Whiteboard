@@ -7,18 +7,20 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import ui.WhiteboardFrame;
 import ui.Shape;
+import javax.swing.JOptionPane;
 
 public class WhiteboardClient {
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
-    private static final String SERVER_ADDRESS = "localhost";
+    private final String SERVER_ADDRESS;
     private static final int SERVER_PORT = 12345;
     private String clientId;
     private WhiteboardFrame frame;
 
-    public WhiteboardClient(String clientId) {
+    public WhiteboardClient(String clientId, String serverAddress) {
         this.clientId = clientId;
+        this.SERVER_ADDRESS = serverAddress;
     }
 
     public void setFrame(WhiteboardFrame frame) {
@@ -46,6 +48,8 @@ public class WhiteboardClient {
             }).start();
         } catch (IOException e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "서버에 연결할 수 없습니다. 프로그램을 종료합니다.", "연결 오류", JOptionPane.ERROR_MESSAGE);
+            System.exit(1); // 프로그램 종료
         }
 
         // 윈도우 종료 시 리스너 추가

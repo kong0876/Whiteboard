@@ -7,10 +7,17 @@ import java.io.PrintWriter;
 import java.net.Socket;
 
 public class Client {
-    private static final String SERVER_ADDRESS = "localhost";
+    private static String SERVER_ADDRESS;
     private static final int SERVER_PORT = 12345;
 
     public static void main(String[] args) {
+        if (args.length != 1) {
+            System.err.println("Usage: java Client <server address>");
+            return;
+        }
+
+        SERVER_ADDRESS = args[0];
+
         try (Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
