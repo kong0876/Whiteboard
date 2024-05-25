@@ -1,4 +1,4 @@
-# Whiteboard###
+# Whiteboard #
 
 - **목표**
     - 공유 화이트보드 시스템 개발
