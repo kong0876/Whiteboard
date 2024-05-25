@@ -22,7 +22,7 @@ public class WhiteboardPanel extends JPanel {
     private Shape selectedShape;
     private Point prevMousePoint;
     private final WhiteboardClient client;
-    private final Map<String, String> shapeLocks; // 도형 ID와 클라이언트 ID를 매핑하여 도형 락 상태를 저장
+    private final Map<String, String> shapeLocks;
 
     public WhiteboardPanel(WhiteboardClient client) {
         this.client = client;
@@ -33,7 +33,7 @@ public class WhiteboardPanel extends JPanel {
         currentFillColor = Color.BLACK;
         currentStroke = 1;
         fillShape = false;
-        currentAction = "선택"; // 초기 값 설정
+        currentAction = "선택";
 
         addMouseListener(new MouseAdapter() {
             @Override
@@ -50,7 +50,6 @@ public class WhiteboardPanel extends JPanel {
             @Override
             public void mouseReleased(MouseEvent e) {
                 if (currentShape != null) {
-                    // 도형의 최종 상태를 서버로 전송
                     client.sendMessage("SHAPE:" + currentShape.serialize());
                     currentShape = null;
                 } else if (selectedShape != null) {
@@ -68,11 +67,11 @@ public class WhiteboardPanel extends JPanel {
                     int dy = currentPoint.y - prevMousePoint.y;
                     selectedShape.move(dx, dy);
                     prevMousePoint = currentPoint;
-                    client.sendMessage("SHAPE:" + selectedShape.serialize()); // 실시간으로 변경 사항 전송
+                    client.sendMessage("SHAPE:" + selectedShape.serialize());
                     repaint();
                 } else if (currentShape != null) {
                     currentShape.update(e.getX(), e.getY());
-                    client.sendMessage("SHAPE:" + currentShape.serialize()); // 실시간으로 변경 사항 전송
+                    client.sendMessage("SHAPE:" + currentShape.serialize());
                     repaint();
                 }
             }
@@ -95,10 +94,15 @@ public class WhiteboardPanel extends JPanel {
                 if (text != null && !text.isEmpty()) {
                     currentShape = new Shape(x, y, currentStrokeColor, currentFillColor, currentStroke, false, Shape.ShapeType.TEXT);
                     currentShape.setText(text);
+                    synchronized (shapes) {
+                        shapes.add(currentShape);
+                    }
+                    client.sendMessage("SHAPE:" + currentShape.serialize());
+                    currentShape = null; // 텍스트 입력 후 즉시 전송하고 null로 설정
                 }
                 break;
             default:
-                return; // currentAction이 유효하지 않을 경우 메서드 종료
+                return;
         }
         if (currentShape != null) {
             synchronized (shapes) {
@@ -108,7 +112,7 @@ public class WhiteboardPanel extends JPanel {
                 client.sendMessage("UNLOCK:" + selectedShape.getId() + ":" + client.getClientId());
             }
             selectedShape = currentShape;
-            client.sendMessage("LOCK:" + currentShape.getId() + ":" + client.getClientId()); // 새 도형을 생성하면 자동으로 잠금
+            client.sendMessage("LOCK:" + currentShape.getId() + ":" + client.getClientId());
         }
     }
 
@@ -242,7 +246,6 @@ public class WhiteboardPanel extends JPanel {
         }
     }
 
-    // 그림 객체 저장
     public void saveShapes(String filename) {
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filename))) {
             synchronized (shapes) {
@@ -254,25 +257,21 @@ public class WhiteboardPanel extends JPanel {
         }
     }
 
-    // 그림 객체 로드
     public void loadShapes(String filename) {
         try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename))) {
             List<Shape> loadedShapes = (List<Shape>) in.readObject();
-            // 기존 도형 제거
             synchronized (shapes) {
                 shapes.clear();
             }
-            // 서버에 도형 제거 명령 전송
             client.sendMessage("CLEAR");
 
             synchronized (shapes) {
                 shapes.addAll(loadedShapes);
             }
-            selectedShape = null; // 선택된 도형을 초기화하여 빨간 원이 보이지 않게 함
+            selectedShape = null;
             repaint();
             System.out.println("그림이 로드되었습니다: " + filename);
 
-            // 로드된 도형 정보를 서버로 전송
             for (Shape shape : loadedShapes) {
                 client.sendMessage("SHAPE:" + shape.serialize());
             }
@@ -281,7 +280,6 @@ public class WhiteboardPanel extends JPanel {
         }
     }
 
-    // 도형 제거
     public void clearShapes() {
         synchronized (shapes) {
             shapes.clear();
